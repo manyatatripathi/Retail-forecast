@@ -1,0 +1,34 @@
+name: Keep app awake
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"   # every 4 hours
+  workflow_dispatch:         # lets you run it manually too
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Open the app in a browser
+        run: |
+          python - <<'EOF'
+          from playwright.sync_api import sync_playwright
+          URL = "https://retail-forecast-manyata.streamlit.app"
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page()
+              page.goto(URL, timeout=120000)
+              page.wait_for_timeout(15000)
+              wake = page.get_by_role("button", name="Yes, get this app back up!")
+              if wake.count() > 0:
+                  wake.first.click()
+                  print("App was asleep - woke it up")
+                  page.wait_for_timeout(60000)
+              else:
+                  print("App is awake")
+              browser.close()
+          EOF
